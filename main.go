@@ -22,19 +22,23 @@ type config struct {
 	Labels      []string `hcl:"labels,optional"`
 }
 
+func renderDiags(diags hcl.Diagnostics, files map[string]*hcl.File) {
+	wr := hcl.NewDiagnosticTextWriter(
+		os.Stdout, // writer to send messages to
+		files,     // the parser's file cache, for source snippets
+		78,        // wrapping width
+		true,      // generate colored/highlighted output
+	)
+	_ = wr.WriteDiagnostics(diags)
+}
+
 func main() {
 	filename := "example.hcl"
 
 	parser := hclparse.NewParser()
 	f, diags := parser.ParseHCLFile(filename)
 	if diags.HasErrors() {
-		wr := hcl.NewDiagnosticTextWriter(
-			os.Stdout,      // writer to send messages to
-			parser.Files(), // the parser's file cache, for source snippets
-			78,             // wrapping width
-			true,           // generate colored/highlighted output
-		)
-		_ = wr.WriteDiagnostics(diags)
+		renderDiags(diags, parser.Files())
 
 		log.Fatal(diags)
 	}
@@ -42,13 +46,7 @@ func main() {
 	var root Root
 	diags = gohcl.DecodeBody(f.Body, nil, &root)
 	if diags.HasErrors() {
-		wr := hcl.NewDiagnosticTextWriter(
-			os.Stdout,      // writer to send messages to
-			parser.Files(), // the parser's file cache, for source snippets
-			78,             // wrapping width
-			true,           // generate colored/highlighted output
-		)
-		_ = wr.WriteDiagnostics(diags)
+		renderDiags(diags, parser.Files())
 
 		log.Fatal(diags)
 	}
