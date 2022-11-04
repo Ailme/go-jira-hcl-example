@@ -5,3 +5,11 @@ create "Task" {
   description = "issue description" # optional
   labels      = ["no-qa"]           # optional
 }
+
+create "Bug" {
+  project     = "AA"                # required
+  summary     = "My first issue"    # required
+  assignee    = "ivanov"            # required
+  description = "issue description" # optional
+  labels      = ["no-qa"]           # optional
+}
