@@ -12,7 +12,7 @@ import (
 )
 
 type Root struct {
-	Create config `hcl:"create,block"`
+	Create []config `hcl:"create,block"`
 }
 
 type config struct {
@@ -61,20 +61,22 @@ func main() {
 	}
 	jiraClient, _ := jira.NewClient(basicAuth.Client(), os.Getenv("JIRA_URL"))
 
-	i := jira.Issue{
-		Fields: &jira.IssueFields{
-			Description: root.Create.Description,
-			Type:        jira.IssueType{Name: root.Create.Type},
-			Project:     jira.Project{Key: root.Create.Project},
-			Summary:     root.Create.Summary,
-			Labels:      root.Create.Labels,
-		},
-	}
+	for _, create := range root.Create {
+		i := jira.Issue{
+			Fields: &jira.IssueFields{
+				Description: create.Description,
+				Type:        jira.IssueType{Name: create.Type},
+				Project:     jira.Project{Key: create.Project},
+				Summary:     create.Summary,
+				Labels:      create.Labels,
+			},
+		}
 
-	issue, _, err := jiraClient.Issue.Create(&i)
-	if err != nil {
-		log.Fatal(err)
-	}
+		issue, _, err := jiraClient.Issue.Create(&i)
+		if err != nil {
+			log.Fatal(err)
+		}
 
-	fmt.Println(issue.Key)
+		fmt.Println(issue.Key)
+	}
 }
