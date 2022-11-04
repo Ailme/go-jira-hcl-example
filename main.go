@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+	"github.com/andygrunwald/go-jira"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/hashicorp/hcl/v2/hclparse"
@@ -52,4 +54,27 @@ func main() {
 	}
 
 	_, _ = pretty.Println(root)
+
+	basicAuth := jira.BasicAuthTransport{
+		Username: os.Getenv("JIRA_USERNAME"),
+		Password: os.Getenv("JIRA_PASSWORD"),
+	}
+	jiraClient, _ := jira.NewClient(basicAuth.Client(), os.Getenv("JIRA_URL"))
+
+	i := jira.Issue{
+		Fields: &jira.IssueFields{
+			Description: root.Create.Description,
+			Type:        jira.IssueType{Name: root.Create.Type},
+			Project:     jira.Project{Key: root.Create.Project},
+			Summary:     root.Create.Summary,
+			Labels:      root.Create.Labels,
+		},
+	}
+
+	issue, _, err := jiraClient.Issue.Create(&i)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Println(issue.Key)
 }
