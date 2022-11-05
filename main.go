@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/hcl/v2/hclparse"
 	"github.com/kr/pretty"
 	"github.com/zclconf/go-cty/cty"
+	"github.com/zclconf/go-cty/cty/function"
 	"log"
 	"os"
 )
@@ -47,6 +48,22 @@ func renderDiags(diags hcl.Diagnostics, files map[string]*hcl.File) {
 	_ = wr.WriteDiagnostics(diags)
 }
 
+var EnvFunc = function.New(&function.Spec{
+	Params: []function.Parameter{
+		{
+			Name:             "env",
+			Type:             cty.String,
+			AllowDynamicType: true,
+		},
+	},
+	Type: function.StaticReturnType(cty.String),
+	Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
+		in := args[0].AsString()
+		out := os.Getenv(in)
+		return cty.StringVal(out), nil
+	},
+})
+
 func parse(filename string) (*Root, error) {
 	parser := hclparse.NewParser()
 	f, diags := parser.ParseHCLFile(filename)
@@ -58,15 +75,9 @@ func parse(filename string) (*Root, error) {
 
 	ctx := &hcl.EvalContext{
 		Variables: map[string]cty.Value{
-			"tester":           cty.StringVal("jira_user_1"),
 			"team_lead":        cty.StringVal("jira_user_5"),
 			"tech_lead":        cty.StringVal("jira_user_5"),
 			"release_engineer": cty.StringVal("jira_user_6"),
-			"developers": cty.ObjectVal(map[string]cty.Value{
-				"Alex":  cty.StringVal("jira_user_2"),
-				"Igor":  cty.StringVal("jira_user_3"),
-				"Denis": cty.StringVal("jira_user_4"),
-			}),
 			"services": cty.ObjectVal(map[string]cty.Value{
 				"service_A": cty.ObjectVal(map[string]cty.Value{
 					"name": cty.StringVal("service_A"),
@@ -78,6 +89,9 @@ func parse(filename string) (*Root, error) {
 					"name": cty.StringVal("service_C"),
 				}),
 			}),
+		},
+		Functions: map[string]function.Function{
+			"env": EnvFunc,
 		},
 	}
 

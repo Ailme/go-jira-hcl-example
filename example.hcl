@@ -14,10 +14,10 @@ DESC
   labels           = ["need-regress"]   # optional
   story_point      = 2                  # optional
   qa_story_point   = 1                  # optional
-  assignee         = developers.Alex    # optional
-  developer        = developers.Alex    # optional
+  assignee         = env("DEVELOPER_ALEX")    # optional
+  developer        = env("DEVELOPER_ALEX")    # optional
   team_lead        = team_lead          # optional
   tech_lead        = tech_lead          # optional
   release_engineer = release_engineer   # optional
-  tester           = tester
+  tester           = env("JIRA_TESTER")
 }
