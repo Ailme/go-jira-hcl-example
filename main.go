@@ -100,7 +100,7 @@ func parse(filename string) (*CreateBlocks, error) {
 			return nil, diags
 		}
 
-		for _, variable := range variables {
+		for key, variable := range variables {
 			var value cty.Value
 
 			diags := gohcl.DecodeExpression(variable.Expr, nil, &value)
@@ -108,7 +108,7 @@ func parse(filename string) (*CreateBlocks, error) {
 				return nil, diags
 			}
 
-			ctx.Variables[variable.Name] = value
+			ctx.Variables[key] = value
 		}
 	}
 
