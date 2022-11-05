@@ -16,12 +16,24 @@ type Root struct {
 }
 
 type config struct {
-	Type        string   `hcl:"type,label"`
-	Project     string   `hcl:"project"`
-	Summary     string   `hcl:"summary"`
-	Assignee    string   `hcl:"assignee"`
-	Description string   `hcl:"description,optional"`
-	Labels      []string `hcl:"labels,optional"`
+	Type            string   `hcl:"type,label"`
+	Project         string   `hcl:"project"`
+	Summary         string   `hcl:"summary"`
+	Description     string   `hcl:"description,optional"`
+	AppLayer        string   `hcl:"app_layer,optional"`
+	Components      []string `hcl:"components,optional"`
+	SprintId        int      `hcl:"sprint,optional"`
+	Epic            string   `hcl:"epic,optional"`
+	Labels          []string `hcl:"labels,optional"`
+	StoryPoint      int      `hcl:"story_point,optional"`
+	QaStoryPoint    int      `hcl:"qa_story_point,optional"`
+	Assignee        string   `hcl:"assignee,optional"`
+	Developer       string   `hcl:"developer,optional"`
+	TeamLead        string   `hcl:"team_lead,optional"`
+	TechLead        string   `hcl:"tech_lead,optional"`
+	ReleaseEngineer string   `hcl:"release_engineer,optional"`
+	Tester          string   `hcl:"tester,optional"`
+	Parent          string   `hcl:"parent,optional"`
 }
 
 func renderDiags(diags hcl.Diagnostics, files map[string]*hcl.File) {
