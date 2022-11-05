@@ -45,6 +45,7 @@ type createConfig struct {
 	ReleaseEngineer string   `hcl:"release_engineer,optional"`
 	Tester          string   `hcl:"tester,optional"`
 	Parent          string   `hcl:"parent,optional"`
+	Remains         hcl.Body `hcl:",remain"`
 }
 
 func renderDiags(diags hcl.Diagnostics, files map[string]*hcl.File) {
@@ -83,7 +84,9 @@ func parse(filename string) (*CreateBlocks, error) {
 	}
 
 	ctx := &hcl.EvalContext{
-		Variables: map[string]cty.Value{},
+		Variables: map[string]cty.Value{
+			"iter": cty.EmptyObjectVal,
+		},
 		Functions: map[string]function.Function{
 			"env": EnvFunc,
 		},
@@ -112,15 +115,62 @@ func parse(filename string) (*CreateBlocks, error) {
 		}
 	}
 
-	var createBlock CreateBlocks
-	diags = gohcl.DecodeBody(variablesBlock.Remains, ctx, &createBlock)
+	var createBlocks CreateBlocks
+	schema, _ := gohcl.ImpliedBodySchema(&createBlocks)
+	bc, _, diags := variablesBlock.Remains.PartialContent(schema)
 	if diags.HasErrors() {
 		renderDiags(diags, parser.Files())
 
 		return nil, diags
 	}
 
-	return &createBlock, nil
+	for _, block := range bc.Blocks {
+		var config createConfig
+		attr, diags := block.Body.JustAttributes()
+		if diags.HasErrors() {
+			renderDiags(diags, parser.Files())
+
+			return nil, diags
+		}
+
+		forEach, found := attr["for_each"]
+
+		if found {
+			var forEachValue cty.Value
+
+			diags := gohcl.DecodeExpression(forEach.Expr, ctx, &forEachValue)
+			if diags.HasErrors() {
+				return nil, diags
+			}
+
+			forEachValue.ForEachElement(func(key cty.Value, val cty.Value) (stop bool) {
+				ctx.Variables["iter"] = val
+
+				diags = gohcl.DecodeBody(block.Body, ctx, &config)
+				if diags.HasErrors() {
+					renderDiags(diags, parser.Files())
+
+					return true
+				}
+				config.Type = block.Labels[0]
+				config.Remains = nil
+				createBlocks.Create = append(createBlocks.Create, config)
+
+				return false
+			})
+		} else {
+			diags = gohcl.DecodeBody(block.Body, ctx, &config)
+			if diags.HasErrors() {
+				renderDiags(diags, parser.Files())
+
+				return nil, diags
+			}
+			config.Type = block.Labels[0]
+			createBlocks.Create = append(createBlocks.Create, config)
+		}
+	}
+
+	return &createBlocks, nil
 }
 
 func authJira() (*jira.Client, error) {

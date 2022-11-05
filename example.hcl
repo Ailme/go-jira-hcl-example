@@ -5,16 +5,16 @@ variables {
   tech_lead        = "jira_user_5"
   release_engineer = "jira_user_6"
   services         = [
-    { name = "service_A" },
-    { name = "service_B" },
-    { name = "service_C" },
+    { name = "service_A", skip = false },
+    { name = "service_B", skip = true },
+    { name = "service_C", skip = false },
   ]
 }
 
 create "Task" {
   project          = "AG"             # required
   # required
-  summary          = "${services.0.name} // Обновить библиотеку Library_A до актуальной версии"
+  summary          = "${iter.name} // Обновить библиотеку Library_A до актуальной версии"
   # optional
   description      = <<DESC
 Нужно обновить библиотеку Library_A до актуальной версии.
@@ -33,4 +33,5 @@ DESC
   tech_lead        = tech_lead          # optional
   release_engineer = release_engineer   # optional
   tester           = tester             # optional
+  for_each         = [for service in services : service if !service.skip]
 }
