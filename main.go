@@ -84,9 +84,7 @@ func parse(filename string) (*CreateBlocks, error) {
 	}
 
 	ctx := &hcl.EvalContext{
-		Variables: map[string]cty.Value{
-			"iter": cty.EmptyObjectVal,
-		},
+		Variables: map[string]cty.Value{},
 		Functions: map[string]function.Function{
 			"env": EnvFunc,
 		},
@@ -158,6 +156,7 @@ func parse(filename string) (*CreateBlocks, error) {
 
 				return false
 			})
+			delete(ctx.Variables, "iter")
 		} else {
 			diags = gohcl.DecodeBody(block.Body, ctx, &config)
 			if diags.HasErrors() {
@@ -166,6 +165,7 @@ func parse(filename string) (*CreateBlocks, error) {
 				return nil, diags
 			}
 			config.Type = block.Labels[0]
+			config.Remains = nil
 			createBlocks.Create = append(createBlocks.Create, config)
 		}
 	}

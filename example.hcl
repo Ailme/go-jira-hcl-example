@@ -21,7 +21,7 @@ create "Task" {
 После обновления проверить сервис на regress
 DESC
   app_layer        = "Backend"          # optional
-  components       = ["${services.0.name}"]      # optional
+  components       = ["${iter.name}"]      # optional
   sprint           = 100                # optional
   epic             = "AG-6815"          # optional
   labels           = ["need-regress"]   # optional
@@ -33,5 +33,6 @@ DESC
   tech_lead        = tech_lead          # optional
   release_engineer = release_engineer   # optional
   tester           = tester             # optional
-  for_each         = [for service in services : service if !service.skip]
+
+  for_each = [for service in services : service if !service.skip]
 }
