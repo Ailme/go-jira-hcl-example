@@ -46,15 +46,13 @@ func renderDiags(diags hcl.Diagnostics, files map[string]*hcl.File) {
 	_ = wr.WriteDiagnostics(diags)
 }
 
-func main() {
-	filename := "example.hcl"
-
+func parse(filename string) (*Root, error) {
 	parser := hclparse.NewParser()
 	f, diags := parser.ParseHCLFile(filename)
 	if diags.HasErrors() {
 		renderDiags(diags, parser.Files())
 
-		log.Fatal(diags)
+		return nil, diags
 	}
 
 	var root Root
@@ -62,17 +60,21 @@ func main() {
 	if diags.HasErrors() {
 		renderDiags(diags, parser.Files())
 
-		log.Fatal(diags)
+		return nil, diags
 	}
 
-	_, _ = pretty.Println(root)
+	return &root, nil
+}
 
+func authJira() (*jira.Client, error) {
 	basicAuth := jira.BasicAuthTransport{
 		Username: os.Getenv("JIRA_USERNAME"),
 		Password: os.Getenv("JIRA_PASSWORD"),
 	}
-	jiraClient, _ := jira.NewClient(basicAuth.Client(), os.Getenv("JIRA_URL"))
+	return jira.NewClient(basicAuth.Client(), os.Getenv("JIRA_URL"))
+}
 
+func processCreate(root *Root, jiraClient *jira.Client) error {
 	for _, create := range root.Create {
 		i := jira.Issue{
 			Fields: &jira.IssueFields{
@@ -86,9 +88,34 @@ func main() {
 
 		issue, _, err := jiraClient.Issue.Create(&i)
 		if err != nil {
-			log.Fatal(err)
+			return err
 		}
 
 		fmt.Println(issue.Key)
+	}
+
+	return nil
+}
+
+func main() {
+	filename := "example.hcl"
+
+	root, err := parse(filename)
+	if err != nil {
+		log.Fatal(err)
+	}
+	_, _ = pretty.Println(root)
+
+	// костыль, чтобы отключить запросы в Jira
+	if false {
+		jiraClient, err := authJira()
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		err = processCreate(root, jiraClient)
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
 }
