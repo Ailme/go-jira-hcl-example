@@ -90,29 +90,26 @@ func parse(filename string) (*CreateBlocks, error) {
 	}
 
 	var variablesBlock VariablesBlock
-	diags = gohcl.DecodeBody(f.Body, ctx, &variablesBlock)
-	if diags.HasErrors() {
-		renderDiags(diags, parser.Files())
+	_ = gohcl.DecodeBody(f.Body, ctx, &variablesBlock)
 
-		return nil, diags
-	}
-
-	variables, diags := variablesBlock.Variables.Remains.JustAttributes()
-	if diags.HasErrors() {
-		renderDiags(diags, parser.Files())
-
-		return nil, diags
-	}
-
-	for _, variable := range variables {
-		var value cty.Value
-
-		diags := gohcl.DecodeExpression(variable.Expr, nil, &value)
+	if variablesBlock.Variables.Remains != nil {
+		variables, diags := variablesBlock.Variables.Remains.JustAttributes()
 		if diags.HasErrors() {
+			renderDiags(diags, parser.Files())
+
 			return nil, diags
 		}
 
-		ctx.Variables[variable.Name] = value
+		for _, variable := range variables {
+			var value cty.Value
+
+			diags := gohcl.DecodeExpression(variable.Expr, nil, &value)
+			if diags.HasErrors() {
+				return nil, diags
+			}
+
+			ctx.Variables[variable.Name] = value
+		}
 	}
 
 	var createBlock CreateBlocks

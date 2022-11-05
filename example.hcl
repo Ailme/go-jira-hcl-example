@@ -5,9 +5,9 @@ variables {
   tech_lead        = "jira_user_5"
   release_engineer = "jira_user_6"
   services         = [
-    { name = "service_A"},
-    { name = "service_B"},
-    { name = "service_C"},
+    { name = "service_A" },
+    { name = "service_B" },
+    { name = "service_C" },
   ]
 }
 
