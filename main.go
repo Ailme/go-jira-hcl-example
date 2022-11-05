@@ -13,12 +13,20 @@ import (
 	"os"
 )
 
-type Root struct {
+type VariablesBlock struct {
 	Variables variables `hcl:"variables,block"`
-	Create    []config  `hcl:"create,block"`
+	Remains   hcl.Body  `hcl:",remain"`
 }
 
-type config struct {
+type variables struct {
+	Remains hcl.Body `hcl:",remain"`
+}
+
+type CreateBlocks struct {
+	Create []createConfig `hcl:"create,block"`
+}
+
+type createConfig struct {
 	Type            string   `hcl:"type,label"`
 	Project         string   `hcl:"project"`
 	Summary         string   `hcl:"summary"`
@@ -37,10 +45,6 @@ type config struct {
 	ReleaseEngineer string   `hcl:"release_engineer,optional"`
 	Tester          string   `hcl:"tester,optional"`
 	Parent          string   `hcl:"parent,optional"`
-}
-
-type variables struct {
-	Variables hcl.Body `hcl:",remain"`
 }
 
 func renderDiags(diags hcl.Diagnostics, files map[string]*hcl.File) {
@@ -69,7 +73,7 @@ var EnvFunc = function.New(&function.Spec{
 	},
 })
 
-func parse(filename string) (*Root, error) {
+func parse(filename string) (*CreateBlocks, error) {
 	parser := hclparse.NewParser()
 	f, diags := parser.ParseHCLFile(filename)
 	if diags.HasErrors() {
@@ -79,36 +83,47 @@ func parse(filename string) (*Root, error) {
 	}
 
 	ctx := &hcl.EvalContext{
-		Variables: map[string]cty.Value{
-			"team_lead":        cty.StringVal("jira_user_5"),
-			"tech_lead":        cty.StringVal("jira_user_5"),
-			"release_engineer": cty.StringVal("jira_user_6"),
-			"services": cty.ObjectVal(map[string]cty.Value{
-				"service_A": cty.ObjectVal(map[string]cty.Value{
-					"name": cty.StringVal("service_A"),
-				}),
-				"service_B": cty.ObjectVal(map[string]cty.Value{
-					"name": cty.StringVal("service_B"),
-				}),
-				"service_C": cty.ObjectVal(map[string]cty.Value{
-					"name": cty.StringVal("service_C"),
-				}),
-			}),
-		},
+		Variables: map[string]cty.Value{},
 		Functions: map[string]function.Function{
 			"env": EnvFunc,
 		},
 	}
 
-	var root Root
-	diags = gohcl.DecodeBody(f.Body, ctx, &root)
+	var variablesBlock VariablesBlock
+	diags = gohcl.DecodeBody(f.Body, ctx, &variablesBlock)
 	if diags.HasErrors() {
 		renderDiags(diags, parser.Files())
 
 		return nil, diags
 	}
 
-	return &root, nil
+	variables, diags := variablesBlock.Variables.Remains.JustAttributes()
+	if diags.HasErrors() {
+		renderDiags(diags, parser.Files())
+
+		return nil, diags
+	}
+
+	for _, variable := range variables {
+		var value cty.Value
+
+		diags := gohcl.DecodeExpression(variable.Expr, nil, &value)
+		if diags.HasErrors() {
+			return nil, diags
+		}
+
+		ctx.Variables[variable.Name] = value
+	}
+
+	var createBlock CreateBlocks
+	diags = gohcl.DecodeBody(variablesBlock.Remains, ctx, &createBlock)
+	if diags.HasErrors() {
+		renderDiags(diags, parser.Files())
+
+		return nil, diags
+	}
+
+	return &createBlock, nil
 }
 
 func authJira() (*jira.Client, error) {
@@ -119,15 +134,15 @@ func authJira() (*jira.Client, error) {
 	return jira.NewClient(basicAuth.Client(), os.Getenv("JIRA_URL"))
 }
 
-func processCreate(root *Root, jiraClient *jira.Client) error {
-	for _, create := range root.Create {
+func processCreate(createBlocks *CreateBlocks, jiraClient *jira.Client) error {
+	for _, config := range createBlocks.Create {
 		i := jira.Issue{
 			Fields: &jira.IssueFields{
-				Description: create.Description,
-				Type:        jira.IssueType{Name: create.Type},
-				Project:     jira.Project{Key: create.Project},
-				Summary:     create.Summary,
-				Labels:      create.Labels,
+				Description: config.Description,
+				Type:        jira.IssueType{Name: config.Type},
+				Project:     jira.Project{Key: config.Project},
+				Summary:     config.Summary,
+				Labels:      config.Labels,
 			},
 		}
 
