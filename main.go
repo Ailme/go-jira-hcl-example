@@ -14,7 +14,8 @@ import (
 )
 
 type Root struct {
-	Create []config `hcl:"create,block"`
+	Variables variables `hcl:"variables,block"`
+	Create    []config  `hcl:"create,block"`
 }
 
 type config struct {
@@ -36,6 +37,10 @@ type config struct {
 	ReleaseEngineer string   `hcl:"release_engineer,optional"`
 	Tester          string   `hcl:"tester,optional"`
 	Parent          string   `hcl:"parent,optional"`
+}
+
+type variables struct {
+	Variables hcl.Body `hcl:",remain"`
 }
 
 func renderDiags(diags hcl.Diagnostics, files map[string]*hcl.File) {
